@@ -12,6 +12,10 @@ import org.springframework.stereotype.Service;
 public class KafkaConsumerService {
     private final EmailService emailService;
 
+    /**
+     * Обрабатывает события пользователей из Kafka
+     * @param event событие пользователя (создание/удаление)
+     */
     @KafkaListener(topics = "user-events", groupId = "notification-group")
     public void consumeUserEvent(UserEventDto event) {
         log.info("Received user event: {}", event);
