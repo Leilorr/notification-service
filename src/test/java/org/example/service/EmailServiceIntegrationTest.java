@@ -1,50 +1,42 @@
 package org.example.service;
 
-import com.icegreen.greenmail.configuration.GreenMailConfiguration;
-import com.icegreen.greenmail.junit5.GreenMailExtension;
-import com.icegreen.greenmail.util.ServerSetupTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-
-import javax.mail.internet.MimeMessage;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class EmailServiceIntegrationTest {
-    @RegisterExtension
-    static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP)
-            .withConfiguration(GreenMailConfiguration.aConfig().withUser("user", "admin"))
-            .withPerMethodLifecycle(false);
-
-    @DynamicPropertySource
-    static void configureMailProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.mail.host", () -> "localhost");
-        registry.add("spring.mail.port", () -> greenMail.getSmtp().getPort());
-        registry.add("spring.mail.username", () -> "user");
-        registry.add("spring.mail.password", () -> "admin");
-    }
+@SpringBootTest
+class EmailServiceMockIT {
 
     @Autowired
     private EmailService emailService;
 
+    @MockBean
+    private JavaMailSender mailSender;
+
     @Test
-    void shouldSendEmail() throws Exception {
+    void shouldSendEmail() {
+        // Arrange
         String to = "test@example.com";
         String subject = "Test Subject";
-        String text = "Test Message";
+        String text = "Test Body";
 
+        // Act
         emailService.sendEmail(to, subject, text);
 
-        MimeMessage[] receivedMessages = greenMail.getReceivedMessages();
-        assertEquals(1, receivedMessages.length);
+        // Assert
+        ArgumentCaptor<SimpleMailMessage> messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(messageCaptor.capture());
 
-        MimeMessage message = receivedMessages[0];
-        assertEquals(subject, message.getSubject());
-        assertEquals(to, message.getAllRecipients()[0].toString());
+        SimpleMailMessage sentMessage = messageCaptor.getValue();
+        assertEquals(to, sentMessage.getTo()[0]);
+        assertEquals(subject, sentMessage.getSubject());
+        assertEquals(text, sentMessage.getText());
     }
 }
